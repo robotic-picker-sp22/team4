@@ -46,7 +46,7 @@ class Torso(object):
         # TODO: Add joint name to list
         # TODO: Add the trajectory point created above to trajectory
         goal = control_msgs.msg.FollowJointTrajectoryGoal()
-        goal.trajectory = trajectory_msgs.msg.JointTrajectory()
+        # goal.trajectory = trajectory_msgs.msg.JointTrajectory()
         goal.trajectory.joint_names.append(JOINT_NAME)
         goal.trajectory.points.append(trajectory_pt)
         
