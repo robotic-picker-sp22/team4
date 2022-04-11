@@ -44,7 +44,7 @@ class Gripper(object):
         """
         goal = control_msgs.msg.GripperCommandGoal()
         goal.command.position = CLOSED_POS
-        goal.command.max_effort = self.MAX_EFFORT
+        goal.command.max_effort = max_effort
         
         self.client.send_goal(goal)
         # TODO: Wait for result
