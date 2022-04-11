@@ -92,13 +92,13 @@
 
 
         <h1>Fetch teleop</h1>
-        <div style="display: flex;">
-            <div style="width: 50%;">
+        <div style="display: flex; height: 100%;">
+            <div style="width: 40%; height: 100%;">
                 [[status]]
-                <div id="camera">
+                <div id="camera" style="margin: auto;">
                     <img src="//localhost:8000/stream?topic=/head_camera/rgb/image_raw"></img>
                 </div>
-                <div>
+                <!-- <div>
                     Shoulder Pan Value: [[_round(armVals.data.0, 0.001)]] <br>
                     Shoulder Lift Value: [[_round(armVals.data.1, 0.001)]] <br>
                     Upperarm Roll Value: [[_round(armVals.data.2, 0.001)]] <br>
@@ -106,10 +106,10 @@
                     Forearm Roll Value: [[_round(armVals.data.4, 0.001)]] <br>
                     Wrist Flex Value: [[_round(armVals.data.5, 0.001)]] <br>
                     Wrist Roll Value: [[_round(armVals.data.6, 0.001)]] <br>
-                </div>
+                </div> -->
             </div>
     
-            <div style="width: 50%;">
+            <div style="width: 60%;">
                 <div class="layout horizontal center">
                     <h4>Torsor Controller ([[_round2(torsoHeight.data, 0.001, 2)]]m):</h4>
                     <paper-slider min="0" max="0.4" step="0.01" editable value="{{desiredTorsoHeight}}"></paper-slider>
@@ -132,59 +132,63 @@
                 <div>
                     <h4>Arm Controller:</h4>
                     <div class="layout horizontal center">
-                        <h5>Shoulder Pan:</h5>
+                        <h5>Shoulder Pan ([[_round2(armVals.data.0, 0.001, 2)]]):</h5>
                         <paper-slider min="-1.605" max="1.605" step="0.01" editable value="{{desiredShoulderPan}}">
                         </paper-slider>
-                        <h5> &nbsp&nbsp Shoulder Lift:</h5>
+                        <h5> &nbsp&nbsp Shoulder Lift ([[_round2(armVals.data.1, 0.001, 2)]]):</h5>
                         <paper-slider min="-1.221" max="1.518" step="0.01" editable value="{{desiredShoulderLift}}">
                         </paper-slider>
                     </div>
                     <div class="layout horizontal center">
-                        <h5>Uperarm Roll:</h5>
+                        <h5>Uperarm Roll ([[_round2(armVals.data.2, 0.001, 2)]]):</h5>
                         <paper-slider min="-10" max="10" step="0.01" editable value="{{desiredUpperarmRoll}}"></paper-slider>
-                        <h5> &nbsp&nbsp Elbow Flex:</h5>
+                        <h5> &nbsp&nbsp Elbow Flex ([[_round2(armVals.data.3, 0.001, 2)]]):</h5>
                         <paper-slider min="-2.251" max="2.251" step="0.01" editable value="{{desiredElbowFlex}}"></paper-slider>
-                        <h5>&nbsp&nbsp Forearm Roll:</h5>
+                        <h5>&nbsp&nbsp Forearm Roll ([[_round2(armVals.data.4, 0.001, 2)]]):</h5>
                         <paper-slider min="-10" max="10" step="0.01" editable value="{{desiredForearmRoll}}"></paper-slider>
                     </div>
                     <div class="layout horizontal center">
-                        <h5>Wrist Flex:</h5>
+                        <h5>Wrist Flex ([[_round2(armVals.data.5, 0.001, 2)]]):</h5>
                         <paper-slider min="-2.181" max="2.181" step="0.01" editable value="{{desiredWristFlex}}"></paper-slider>
-                        <h5> &nbsp&nbsp Wrist Roll:</h5>
+                        <h5> &nbsp&nbsp Wrist Roll ([[_round2(armVals.data.6, 0.001, 2)]]):</h5>
                         <paper-slider min="-10" max="10" step="0.01" editable value="{{desiredWristRoll}}"></paper-slider>
                     </div>
                     <paper-button on-tap="_moveArm">Move Arm</paper-button>
                 </div>
                 <div>
                     <h4>Motor Controller:</h4>
-                    <div id="driving" class="layout vertical">
-                        <div class="layout horizontal">
-                            <div class="flex"></div>
-                            <paper-button on-down="_startForward" on-up="_endBaseCommand">Forward</paper-button>
-                            <div class="flex"></div>
+                    <div style="display: flex; justify-content: space-evenly;">
+                        <div id="driving" class="layout vertical">
+                            <div class="layout horizontal">
+                                <div class="flex"></div>
+                                <paper-button on-down="_startForward" on-up="_endBaseCommand">Forward</paper-button>
+                                <div class="flex"></div>
+                            </div>
+                            <div class="layout horizontal">
+                                <paper-button on-down="_turnLeft" on-up="_endBaseCommand">Left</paper-button>
+                                <paper-button on-down="_reverse" on-up="_endBaseCommand">Back</paper-button>
+                                <paper-button on-down="_turnRight" on-up="_endBaseCommand">Right</paper-button>
+                            </div>
                         </div>
-                        <div class="layout horizontal">
-                            <paper-button on-down="_turnLeft" on-up="_endBaseCommand">Left</paper-button>
-                            <paper-button on-down="_reverse" on-up="_endBaseCommand">Back</paper-button>
-                            <paper-button on-down="_turnRight" on-up="_endBaseCommand">Right</paper-button>
-                        </div>
-                        <div class="layout horizontal">
-                            <h5>Linear Speed:</h5>
-                            <paper-slider min="0" max="1" step="0.01" editable value="{{linearSpeed}}"></paper-slider>
-                        </div>
-                        <div class="layout horizontal">
-                            <h5>Angular Speed:</h5>
-                            <paper-slider min="0" max="1.5" step="0.01" editable value="{{angularSpeed}}"></paper-slider>
+                        
+                        <div>
+                            <div class="layout horizontal">
+                                <h5>Linear Speed:</h5>
+                                <paper-slider min="0" max="1" step="0.01" editable value="{{linearSpeed}}"></paper-slider>
+                            </div>
+                            <div class="layout horizontal">
+                                <h5>Angular Speed:</h5>
+                                <paper-slider min="0" max="1.5" step="0.01" editable value="{{angularSpeed}}"></paper-slider>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="layout horizontal center">
-                    <h4>Grab Controller:</h4>
+                    <h4>Grab Controller ([[grabbingStatus]]):</h4>
                     <paper-button on-tap="_gripperGrab">Grab</paper-button>
                     <paper-button on-tap="_gripperRelease">Release</paper-button>
                 </div>
-        
                 <div style="height:50px"></div>
             </div>
         </div>
@@ -224,7 +228,7 @@
          * @polymer
          */
         class WebTeleopApp extends Polymer.Element {
-            static get is() { return 'web-teleop-app'; }
+            static get is() {return 'web-teleop-app'; }
             static get properties() {
                 return {};
             }
@@ -278,10 +282,12 @@
             }
             _gripperGrab() {
                 this.status = "Grabbing..."
+                this.grabbingStatus = "Grab"
                 this.$.gripperService.call({ grab: 1.0 })
             }
             _gripperRelease() {
                 this.status = "Releasing..."
+                this.grabbingStatus = "Release"
                 this.$.gripperService.call({ grab: 0.0 })
             }
             _moveArm() {
