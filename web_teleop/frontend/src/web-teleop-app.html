@@ -98,15 +98,7 @@
                 <div id="camera" style="height: 100%;">
                     <img src="//localhost:8000/stream?topic=/head_camera/rgb/image_raw"></img>
                 </div>
-                <!-- <div>
-                    Shoulder Pan Value: [[_round(armVals.data.0, 0.001)]] <br>
-                    Shoulder Lift Value: [[_round(armVals.data.1, 0.001)]] <br>
-                    Upperarm Roll Value: [[_round(armVals.data.2, 0.001)]] <br>
-                    Elbow Flex Value: [[_round(armVals.data.3, 0.001)]] <br>
-                    Forearm Roll Value: [[_round(armVals.data.4, 0.001)]] <br>
-                    Wrist Flex Value: [[_round(armVals.data.5, 0.001)]] <br>
-                    Wrist Roll Value: [[_round(armVals.data.6, 0.001)]] <br>
-                </div> -->
+
             </div>
     
             <div style="width: 60%;">
@@ -192,33 +184,6 @@
                 <div style="height:50px"></div>
             </div>
         </div>
-        
-        
-
-        <!-- <div id="driving" class="layout vertical">
-      <div class="layout horizontal">
-          <div class="flex"></div>
-          <paper-button
-            on-down="_startForward"
-            on-up="_endBaseCommand"
-          >Raise</paper-button>
-          <div class="flex"></div>
-      </div>
-      <div class="layout horizontal">
-          <paper-button
-            on-down="_turnLeft"
-            on-up="_endBaseCommand"    
-          >Turn Head Left</paper-button>
-          <paper-button
-            on-down="_reverse"
-            on-up="_endBaseCommand"
-          >Lower</paper-button>
-          <paper-button
-            on-down="_turnHeadRight"
-            on-up="_endBaseCommand"
-          >Turn Head Right</paper-button>
-      </div>
-    </div> -->
     </template>
 
     <script>

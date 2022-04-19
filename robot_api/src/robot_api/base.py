@@ -127,16 +127,18 @@ class Base(object):
         
     def calculate_angular_dist(self, goal, curr, angular_distance):
 
-        if goal > curr:
-            if angular_distance > 0:
-                return goal - curr
-            else:
-                return 2*math.pi - (goal - curr)
-        else: # curr > goal
-            if angular_distance > 0:
-                return 2*math.pi + (goal - curr)
-            else:
-                return curr - goal
+        # if goal > curr:
+        #     if angular_distance > 0:
+        #         return goal - curr
+        #     else:
+        #         return 2*math.pi - (goal - curr)
+        # else: # curr > goal
+        #     if angular_distance > 0:
+        #         return 2*math.pi + (goal - curr)
+        #     else:
+        #         return curr - goal
+
+        return (np.sign(angular_distance) * (goal - curr)) % (2 * math.pi)
 
     def move(self, linear_speed, angular_speed):
         """Moves the base instantaneously at given linear and angular speeds.
