@@ -1,8 +1,5 @@
 #!/usr/bin/env python
 
-from xmlrpc.client import Marshaller
-
-from yaml import Mark
 from interactive_markers.interactive_marker_server import InteractiveMarkerServer
 from visualization_msgs.msg import InteractiveMarker, InteractiveMarkerControl, InteractiveMarkerFeedback
 from visualization_msgs.msg import Marker
@@ -14,37 +11,25 @@ def handle_viz_input_forward(input):
     if (input.event_type == InteractiveMarkerFeedback.BUTTON_CLICK):
         rospy.loginfo(input.marker_name + ' was clicked.')
         base = robot_api.Base()
-        base.go_forward(0.5)
-    else:
-        pass
-        # rospy.loginfo('Cannot handle this InteractiveMarker event')
+        base.go_forward(0.5,0.5)
 
 def handle_viz_input_back(input):
     if (input.event_type == InteractiveMarkerFeedback.BUTTON_CLICK):
         rospy.loginfo(input.marker_name + ' was clicked.')
         base = robot_api.Base()
-        base.go_forward(-0.5)
-    else:
-        pass
-        # rospy.loginfo('Cannot handle this InteractiveMarker event')
+        base.go_forward(-0.5,0.5)
 
 def handle_viz_input_clockwise(input):
     if (input.event_type == InteractiveMarkerFeedback.BUTTON_CLICK):
         rospy.loginfo(input.marker_name + ' was clicked.')
         base = robot_api.Base()
         base.turn(30 * math.pi / 180)
-    else:
-        pass
-        # rospy.loginfo('Cannot handle this InteractiveMarker event')
 
 def handle_viz_input_counter_clockwise(input):
     if (input.event_type == InteractiveMarkerFeedback.BUTTON_CLICK):
         rospy.loginfo(input.marker_name + ' was clicked.')
         base = robot_api.Base()
         base.turn((30 * math.pi / 180) * -1)
-    else:
-        pass
-        # rospy.loginfo('Cannot handle this InteractiveMarker event')        
 
 def main():
     rospy.init_node('base_marker')

@@ -9,7 +9,7 @@ from nav_msgs.msg import Odometry
 class NavPath(object):
     def __init__(self):
         self._path = []
-        self._publisher = rospy.Publisher('visualization_marker', Marker)
+        self._publisher = rospy.Publisher('visualization_marker', Marker, queue_size=5)
     
     def callback(self, msg):
         rospy.loginfo(msg)
@@ -20,7 +20,7 @@ class NavPath(object):
 
     def dist(self, P1, P2):
         d = (P1.x - P2.x) ** 2 + (P1.y - P2.y) ** 2 + (P1.z - P2.z) ** 2
-        return d > 0.5
+        return d > 0.3
 
     def publish(self):
         marker = Marker(

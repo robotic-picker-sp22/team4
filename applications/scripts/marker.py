@@ -111,7 +111,7 @@ if __name__=="__main__":
     rospy.Timer(rospy.Duration(0.01), frameCallback)
 
     server = InteractiveMarkerServer("map_annotator/map_poses")
-    position = Point(0, 0, 1)
+    position = Point(0, 0, 0)
     makePoseMarker(position, "some pose")
 
 

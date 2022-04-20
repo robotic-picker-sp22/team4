@@ -13,6 +13,9 @@ import copy
 
 TO_DEGREE = 180 / math.pi
 
+def calculate_angular_dist(goal, curr, direction):
+    return (direction * (goal - curr)) % (2 * math.pi)
+
 class Base(object):
     """Base controls the mobile base portion of the Fetch robot.
 
@@ -67,16 +70,11 @@ class Base(object):
                 means forward, negative means backward.
             speed: The speed to travel, in meters/second.
         """
-        # TODO: rospy.sleep until the base has received at least one message on /odom
-        # TODO: record start position, use Python's copy.deepcopy
         rospy.sleep(1)
         start = copy.deepcopy(self.current_pose)
         rate = rospy.Rate(10)
-        # TODO: CONDITION should check if the robot has traveled the desired distance
-        # TODO: Be sure to handle the case where the distance is negative!
         curr_trav_dist = 0
         while abs(curr_trav_dist) < abs(distance):
-            # TODO: you will probably need to do some math in this loop to check the CONDITION
             direction = -1 if distance < 0 else 1
             step = direction * speed
             self.move(step, 0)
@@ -93,52 +91,22 @@ class Base(object):
         """
         # goal - current > 0 ==> fine. if goal - current < 0 ==> (|goal - current| // 180) * 360 + (goal - current)
         # goal = current, current = goal
-        # TODO: rospy.sleep until the base has received at least one message on /odom
-        # TODO: record start position, use Python's copy.deepcopy
         rospy.sleep(1)
         start = copy.deepcopy(self.current_pose)
-        # TODO: What will you do if angular_distance is greater than 2*pi or less than -2*pi?
         rate = rospy.Rate(10)
-        # TODO: CONDITION should check if the robot has rotated the desired amount
-        # TODO: Be sure to handle the case where the desired amount is negative!
+        direction = np.sign(angular_distance)
         curr_rotation = start.theta
-        clockwise = angular_distance
-        angular_distance = angular_distance % (2 * math.pi)
-        clockwise = np.sign(clockwise) * angular_distance
-        # exit()
-        dest = (angular_distance + curr_rotation)  % (2 * math.pi)
+        dest = (angular_distance + curr_rotation) % (2 * math.pi)
 
-        curr_trav_dist = self.calculate_angular_dist(dest, self.current_pose.theta, clockwise)
-        min_val = float('inf')
-        while True:
-            # TODO: you will probably need to do some math in this loop to check the CONDITION
-            # print("Hello")
-            direction = -1 if clockwise < 0 else 1
+        curr_trav_dist = calculate_angular_dist(dest, curr_rotation, direction)
+        min_val = curr_trav_dist
+        while curr_trav_dist <= min_val or min_val >= 0.05:
             self.move(0, direction * speed)
-            curr_trav_dist = self.calculate_angular_dist(dest, self.current_pose.theta, clockwise)
-            print(curr_trav_dist)
-            min_val = min(min_val, curr_trav_dist)
-
-            if curr_trav_dist > min_val and min_val < 0.05:
-                # self.move(0, -direction * speed * 0.4)
-                break
-            # curr_rotation = self.current_pose.theta
             rate.sleep()
+            curr_trav_dist = calculate_angular_dist(dest, self.current_pose.theta, direction)
+            min_val = min(min_val, curr_trav_dist)
         
-    def calculate_angular_dist(self, goal, curr, angular_distance):
 
-        # if goal > curr:
-        #     if angular_distance > 0:
-        #         return goal - curr
-        #     else:
-        #         return 2*math.pi - (goal - curr)
-        # else: # curr > goal
-        #     if angular_distance > 0:
-        #         return 2*math.pi + (goal - curr)
-        #     else:
-        #         return curr - goal
-
-        return (np.sign(angular_distance) * (goal - curr)) % (2 * math.pi)
 
     def move(self, linear_speed, angular_speed):
         """Moves the base instantaneously at given linear and angular speeds.
