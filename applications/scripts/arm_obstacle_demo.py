@@ -5,6 +5,7 @@ import rospy
 from moveit_msgs.msg import OrientationConstraint
 from geometry_msgs.msg import PoseStamped
 from moveit_python import PlanningSceneInterface
+from functools import partial
 
 def wait_for_time():
     """Wait for simulated time to begin.
@@ -12,30 +13,36 @@ def wait_for_time():
     while rospy.Time().now().to_sec() == 0:
         pass
 
+def remove_if_exists(list, method, object):
+    if object in list():
+        method(object)
+
 def main():
     rospy.init_node('obstacle_demo')
     wait_for_time()
     planning_scene = PlanningSceneInterface('base_link')
+    removeCollisionObject = partial(remove_if_exists, planning_scene.getKnownCollisionObjects, planning_scene.removeCollisionObject)
+    removeAttachedObject = partial(remove_if_exists, planning_scene.getKnownAttachedObjects, planning_scene.removeAttachedObject)
     # Create table obstacle
-    planning_scene.removeCollisionObject('table')
+    removeCollisionObject('table')
     table_size_x = 0.5
     table_size_y = 1
     table_size_z = 0.03
     table_x = 0.8
     table_y = 0
     table_z = 0.6
-    planning_scene.addBox('table', table_size_x, table_size_y, table_size_z,
-                        table_x, table_y, table_z)
+    # planning_scene.addBox('table', table_size_x, table_size_y, table_size_z,
+    #                     table_x, table_y, table_z)
 
     # Create divider obstacle
-    planning_scene.removeCollisionObject('divider')
+    removeCollisionObject('divider')
     size_x = 0.3 
     size_y = 0.01
     size_z = 0.4 
     x = table_x - (table_size_x / 2) + (size_x / 2)
     y = 0 
     z = table_z + (table_size_z / 2) + (size_z / 2)
-    # planning_scene.addBox('divider', size_x, size_y, size_z, x, y, z)
+    #planning_scene.addBox('divider', size_x, size_y, size_z, x, y, z)
 
     pose1 = PoseStamped()
     pose1.header.frame_id = 'base_link'
@@ -72,7 +79,7 @@ def main():
         'replan': False
     }
     error = arm.move_to_pose(pose1, **kwargs)
-    planning_scene.removeAttachedObject('tray')
+    removeAttachedObject('tray')
     if error is not None:
         rospy.logerr('Pose 1 failed: {}'.format(error))
     else:
@@ -95,9 +102,9 @@ def main():
         rospy.loginfo('Pose 2 succeeded')
     
     # At the end of your program
-    planning_scene.removeAttachedObject('tray')
-    planning_scene.removeCollisionObject('table')
-    planning_scene.removeCollisionObject('divider')
+    removeAttachedObject('tray')
+    removeCollisionObject('table')
+    removeCollisionObject('divider')
 
 if __name__ == '__main__':
     main()
