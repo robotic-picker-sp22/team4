@@ -1,9 +1,9 @@
 #! /usr/bin/env python
-from geometry_msgs.msg import Pose
+from geometry_msgs.msg import Pose, Point
 import numpy as np
 import tf.transformations as tft
 
-def to_pregrasp(pose : Pose):
+def to_offset(pose : Pose, offset: Point):
     position = pose.position
     orientation = pose.orientation
     base_obj = tft.quaternion_matrix([orientation.x, orientation.y, orientation.z, orientation.w])
@@ -12,7 +12,9 @@ def to_pregrasp(pose : Pose):
     base_obj[2][3] = position.z
 
     obj_grasp = tft.quaternion_matrix([0, 0, 0, 1])
-    obj_grasp[0][3] = -0.1
+    obj_grasp[0][3] += offset.x
+    obj_grasp[1][3] += offset.y
+    obj_grasp[2][3] += offset.z
 
     base_grasp = base_obj @ obj_grasp
     pregrasp = Pose()
@@ -36,4 +38,4 @@ object.orientation.y = 0
 object.orientation.z = 0.38268343
 object.orientation.w = 0.92387953
 
-print(str(to_pregrasp(object)))
+print(str(to_offset(object, Point(x=-0.1, y=0, z=0))))

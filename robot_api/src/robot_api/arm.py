@@ -94,11 +94,12 @@ class Arm(object):
         goal_builder.tolerance = tolerance
         if orientation_constraint is not None:
             goal_builder.add_path_orientation_constraint(orientation_constraint)
+        rospy.sleep(0.1)
         goal = goal_builder.build()
 
         self._move_group_client.send_goal_and_wait(goal, rospy.Duration(execution_timeout))
         result = moveit_error_string(self._move_group_client.get_result().error_code.val)
-        return None if result == 'SUCCESS' else result
+        return result
 
     def check_pose(self, 
             pose_stamped,
@@ -112,7 +113,7 @@ class Arm(object):
             tolerance=tolerance,
             plan_only=True)
 
-    def compute_ik(self, pose_stamped, timeout=rospy.Duration(5)):
+    def compute_ik(self, pose_stamped, timeout=rospy.Duration(5), debug=False):
         """Computes inverse kinematics for the given pose.
 
         Note: if you are interested in returning the IK solutions, we have
@@ -135,9 +136,10 @@ class Arm(object):
         if not success:
             return False
         joint_state = response.solution.joint_state
-        for name, position in zip(joint_state.name, joint_state.position):
-            if name in ArmJoints.names():
-                rospy.loginfo('{}: {}'.format(name, position))
+        if debug:
+            for name, position in zip(joint_state.name, joint_state.position):
+                if name in ArmJoints.names():
+                    rospy.loginfo('{}: {}'.format(name, position))
         return True
 
     def cancel_all_goals(self):
