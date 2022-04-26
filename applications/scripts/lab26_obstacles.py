@@ -25,8 +25,13 @@ def main():
     planning_scene.clear()
     planning_scene.removeCollisionObject('table')
     planning_scene.removeCollisionObject('floor')
+    planning_scene.removeCollisionObject('cube')
     planning_scene.addBox('floor', 2, 2, 0.01, 0, 0, 0.01/2)
-    planning_scene.addBox('table', 0.5, 1, 0.72, 1, 0, 0.72/2)
+    planning_scene.addBox('table', 1.1, 1.5, 0.83, 1.1, 0, 0.72/2)
+    planning_scene.setColor('table', 1, 0, 0)
+    planning_scene.addBox('cube', 0.07, 0.07, 0.07, 0.785, 0.245, 0.8)
+    planning_scene.sendColors()
+
 
     rospy.sleep(2)
 

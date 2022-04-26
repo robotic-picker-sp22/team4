@@ -6,8 +6,10 @@ from interactive_markers.interactive_marker_server import InteractiveMarkerServe
 from visualization_msgs.msg import InteractiveMarker, InteractiveMarkerControl, InteractiveMarkerFeedback
 from interactive_markers.menu_handler import *
 from visualization_msgs.msg import Marker
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, Point
 from tf.listener import TransformListener
+from moveit_msgs.msg import OrientationConstraint
+from pregrasp_demo import to_offset
 import rospy, copy
 import robot_api
 import math
@@ -16,11 +18,9 @@ GRIPPER_MESH = 'package://fetch_description/meshes/gripper_link.dae'
 L_FINGER_MESH = 'package://fetch_description/meshes/l_gripper_finger_link.STL'
 R_FINGER_MESH = 'package://fetch_description/meshes/r_gripper_finger_link.STL'
 
-def make_gripper(pose_stamped : PoseStamped):
+def make_gripper(offset : Point):
     FINGER_OFFSET = 0.0529
-    int_marker = InteractiveMarker()
-    int_marker.header = pose_stamped.header
-    int_marker.pose = pose_stamped.pose
+    
 
     gripper = Marker()
     gripper.type = Marker.MESH_RESOURCE
@@ -28,32 +28,35 @@ def make_gripper(pose_stamped : PoseStamped):
     gripper.scale.x = 1
     gripper.scale.y = 1
     gripper.scale.z = 1
-    gripper.color.a = 1
+    gripper.color.a = 0.7
     gripper.color.g = 1
-    gripper.pose.position.x = 0.166
+    gripper.pose.position.x = offset.x
+    gripper.pose.position.y = offset.y
+    gripper.pose.position.z = offset.z
 
     l_finger = Marker()
     l_finger.type = Marker.MESH_RESOURCE
     l_finger.mesh_resource = L_FINGER_MESH
-    l_finger.pose.position.y = -FINGER_OFFSET
     l_finger.scale.x = 1
     l_finger.scale.y = 1
     l_finger.scale.z = 1
-    l_finger.color.a = 1
+    l_finger.color.a = 0.7
     l_finger.color.g = 1
-    l_finger.pose.position.x = 0.166
-
+    l_finger.pose.position.x = offset.x
+    l_finger.pose.position.y = offset.y-FINGER_OFFSET
+    l_finger.pose.position.z = offset.z
 
     r_finger = Marker()
     r_finger.type = Marker.MESH_RESOURCE
     r_finger.mesh_resource = R_FINGER_MESH
-    r_finger.pose.position.y = FINGER_OFFSET
     r_finger.scale.x = 1
     r_finger.scale.y = 1
     r_finger.scale.z = 1
-    r_finger.color.a = 1
+    r_finger.color.a = 0.7
     r_finger.color.g = 1
-    r_finger.pose.position.x = 0.166
+    r_finger.pose.position.x = offset.x
+    r_finger.pose.position.y = offset.y + FINGER_OFFSET
+    r_finger.pose.position.z = offset.z
 
 
     ctl = InteractiveMarkerControl()
@@ -63,9 +66,7 @@ def make_gripper(pose_stamped : PoseStamped):
     ctl.markers.append(l_finger)
     ctl.markers.append(r_finger)
 
-    int_marker.controls.append(ctl)
-
-    return int_marker
+    return ctl
 
 def make_6dof_controls():
     controls = []
@@ -131,9 +132,13 @@ class GripperTeleop(object):
         init_pose.header.frame_id = 'base_link'
         self._tf_listener.waitForTransform(goal_pose.header.frame_id, init_pose.header.frame_id, rospy.Time.now(),rospy.Duration(5.0))
         init_pose = self._tf_listener.transformPose(init_pose.header.frame_id, goal_pose)
-        self.gripper_im : InteractiveMarker = make_gripper(init_pose)
-        self.gripper_im.name = 'gripper_teleop'
+
+        self.gripper_im = InteractiveMarker()
+        self.gripper_im.header = init_pose.header
+        self.gripper_im.pose = init_pose.pose
+        self.gripper_im.controls.append(make_gripper(Point(x=0.166, y=0, z=0)))
         self.gripper_im.controls.extend(make_6dof_controls())
+        self.gripper_im.name = 'gripper_teleop'
         self.gripper_im.scale = 0.25
         self.valid = True
         self.make_menu()
@@ -196,25 +201,131 @@ class AutoPickTeleop(object):
         self._arm = arm
         self._gripper = gripper
         self._im_server = im_server
+        self._menu_handler = MenuHandler()
+        self._tf_listener = TransformListener()
+        rospy.sleep(0.1)
+        
 
     def start(self):
-        obj_im = InteractiveMarker()
-        self._im_server.insert(obj_im, feedback_cb=self.handle_feedback)
+        self.make_im()
+        self.valid = True
+        self.make_menu()
+        self._im_server.insert(self.obj_im, feedback_cb=self.handle_feedback)
+        self._im_server.applyChanges()
+
+    def make_im(self):
+        # Make Initial Marker Pose
+        goal_pose = PoseStamped()
+        goal_pose.header.frame_id = 'wrist_roll_link'
+        init_pose = PoseStamped()
+        init_pose.header.frame_id = 'base_link'
+        self._tf_listener.waitForTransform(goal_pose.header.frame_id, init_pose.header.frame_id, rospy.Time.now(),rospy.Duration(5.0))
+        init_pose = self._tf_listener.transformPose(init_pose.header.frame_id, goal_pose)
+        init_pose.pose.position.x += 0.25
+        
+        self.obj_im = InteractiveMarker()
+        self.obj_im.header = init_pose.header
+        self.obj_im.pose = init_pose.pose
+
+        self.obj_im.controls.append(make_gripper(Point(-0.1, 0, 0)))
+        self.obj_im.controls.append(make_gripper(Point(0, 0, 0.25)))
+        self.obj_im.controls.append(make_gripper(Point(0, 0, 0)))
+        self.obj_im.controls.extend(make_6dof_controls())
+        
+        box_marker = Marker()
+        box_marker.type = Marker.CUBE
+        box_marker.scale.x = 0.065
+        box_marker.scale.y = 0.065
+        box_marker.scale.z = 0.065
+        box_marker.color.r = 1.0
+        box_marker.color.g = 1.0
+        box_marker.color.b = 0.0
+        box_marker.color.a = 0.7
+
+        # create a non-interactive control which contains the box
+        box_control = InteractiveMarkerControl()
+        box_control.always_visible = True
+        box_control.markers.append( box_marker )
+        self.obj_im.controls.append(box_control)
+
+
+        self.obj_im.name = 'auto_pick_teleop'
+        self.obj_im.scale = 0.25
+    
+    def make_menu(self):
+        ctl = InteractiveMarkerControl()
+        ctl.interaction_mode = InteractiveMarkerControl.MENU
+        ctl.name = "gripper_menu"
+        ctl.always_visible = True
+        self.obj_im.controls.append(ctl)
+
+        self.obj_im.menu_entries.append(MenuEntry(id=1, title="Pick from front"))
+        self.obj_im.menu_entries.append(MenuEntry(id=2, title="Open gripper"))
+
 
     def handle_feedback(self, feedback):
-        pass
+        if feedback.event_type == InteractiveMarkerFeedback.POSE_UPDATE:
+            change = False
+            for ctl in self.obj_im.controls:
+                if ctl.name == 'gripper_mesh':
+                    pos = copy.deepcopy(ctl.markers[0].pose.position)
+                    pos.x -= 0.166
+                    ps = PoseStamped(pose=to_offset(feedback.pose, pos))
+                    ps.header.frame_id = feedback.header.frame_id
+                    is_valid = self._arm.compute_ik(ps)
+                    if is_valid and ctl.markers[0].color.g == 0:
+                        change = True
+                        for marker in ctl.markers:
+                            marker.color.g = 1
+                            marker.color.r = 0
+                    elif not is_valid and ctl.markers[0].color.g == 1:
+                        change = True
+                        for marker in ctl.markers:
+                            marker.color.g = 0
+                            marker.color.r = 1
+            if change:
+                self.obj_im.pose = feedback.pose
+                self._im_server.insert(self.obj_im, feedback_cb=self.handle_feedback)
+                self._im_server.applyChanges()
+            
+        elif feedback.event_type == InteractiveMarkerFeedback.MENU_SELECT:
+            if feedback.menu_entry_id == 1:
+                for ctl in self.obj_im.controls:
+                    if ctl.name == 'gripper_mesh' and ctl.markers[0].color.g == 0:
+                        return
+                ps = PoseStamped(pose=to_offset(feedback.pose, Point(x=-0.266)))
+                ps.header.frame_id = feedback.header.frame_id
+                rospy.loginfo(self._arm.move_to_pose(ps))
+
+                ps = PoseStamped(pose=to_offset(feedback.pose, Point(x=-0.166)))
+                ps.header.frame_id = feedback.header.frame_id
+                rospy.loginfo(self._arm.move_to_pose(ps))
+
+                self._gripper.close()
+
+                ps = PoseStamped(pose=to_offset(feedback.pose, Point(x=-0.166, z=0.25)))
+                ps.header.frame_id = feedback.header.frame_id
+                rospy.loginfo(self._arm.move_to_pose(ps))
+
+            elif feedback.menu_entry_id == 2:
+                self._gripper.open()
 
 
 def main():
     rospy.init_node('gripper_im_server')
     arm = robot_api.Arm()
     gripper = robot_api.Gripper()
-    im_server = InteractiveMarkerServer('gripper_im_server')
-    #auto_pick_im_server = InteractiveMarkerServer('auto_pick_im_server')
+    im_server = InteractiveMarkerServer('gripper_im_server', q_size=2)
     teleop = GripperTeleop(arm, gripper, im_server)
-    #auto_pick = AutoPickTeleop(arm, gripper, auto_pick_im_server)
     teleop.start()
-    #auto_pick.start()
+
+    # rospy.init_node('auto_pick_im_server')
+    # arm = robot_api.Arm()
+    # gripper = robot_api.Gripper()
+    auto_pick_im_server = InteractiveMarkerServer('auto_pick_im_server', q_size=2)
+    auto_pick = AutoPickTeleop(arm, gripper, auto_pick_im_server)
+    auto_pick.start()
+
     rospy.spin()
 
 if __name__ == '__main__':

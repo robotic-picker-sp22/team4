@@ -27,15 +27,3 @@ def to_offset(pose : Pose, offset: Point):
     pregrasp.orientation.z = qt[2]
     pregrasp.orientation.w = qt[3]
     return pregrasp
-
-object = Pose()
-object.position.x = 0.6
-object.position.y = -0.1
-object.position.z = 0.7
-
-object.orientation.x = 0
-object.orientation.y = 0
-object.orientation.z = 0.38268343
-object.orientation.w = 0.92387953
-
-print(str(to_offset(object, Point(x=-0.1, y=0, z=0))))
