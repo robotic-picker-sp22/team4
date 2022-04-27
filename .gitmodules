@@ -4,3 +4,6 @@
 [submodule "simple_grasping"]
 	path = simple_grasping
 	url = https://github.com/mikeferguson/simple_grasping.git
+[submodule "moveit_msgs"]
+	path = moveit_msgs
+	url = https://github.com/ros-planning/moveit_msgs.git
