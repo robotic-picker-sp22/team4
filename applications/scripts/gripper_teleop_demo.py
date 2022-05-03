@@ -241,7 +241,7 @@ class AutoPickTeleop(object):
         self.offsets.append(Point(-0.1, 0, 0)) # Pregrasp
         self.offsets.append(Point(0, 0, 0))    # Grasp
         self.offsets.append(None)              # Grip
-        self.offsets.append(Point(0, 0, 0.25)) # Lift
+        self.offsets.append(Point(-0.2, 0, 0)) # Lift
 
         for offset in self.offsets:
             if offset is not None:

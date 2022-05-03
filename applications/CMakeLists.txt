@@ -7,7 +7,7 @@ project(applications)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
-  moveit_msgs
+  # moveit_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -104,7 +104,7 @@ catkin_package(
 #  LIBRARIES applications
 #  CATKIN_DEPENDS roscpp rospy
 #  DEPENDS system_lib
-    CATKIN_DEPENDS moveit_msgs
+  # CATKIN_DEPENDS moveit_msgs
 )
 
 ###########
@@ -115,7 +115,7 @@ catkin_package(
 ## Your package locations should be listed before other locations
 # include_directories(include)
 include_directories(
-  include ${moveit_msgs_INCLUDE_DIRS}
+  # include ${moveit_msgs_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
 )
 
