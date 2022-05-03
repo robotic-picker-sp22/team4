@@ -2,6 +2,7 @@
 
 from distutils.archive_util import make_zipfile
 from operator import is_
+from tkinter import E
 from interactive_markers.interactive_marker_server import InteractiveMarkerServer
 from visualization_msgs.msg import InteractiveMarker, InteractiveMarkerControl, InteractiveMarkerFeedback
 from interactive_markers.menu_handler import *
@@ -12,6 +13,7 @@ from moveit_msgs.msg import OrientationConstraint
 from pregrasp_demo import to_offset
 import rospy, copy
 import robot_api
+from joint_state_reader import JointStateReader
 import math
 
 GRIPPER_MESH = 'package://fetch_description/meshes/gripper_link.dae'
@@ -123,6 +125,7 @@ class GripperTeleop(object):
         self._im_server = im_server
         self._menu_handler = MenuHandler()
         self._tf_listener = TransformListener()
+        self._joint_listener = JointStateReader()
         rospy.sleep(0.1)
 
     def start(self):
@@ -159,9 +162,11 @@ class GripperTeleop(object):
 
     def handle_feedback(self, feedback:InteractiveMarkerFeedback):
         if feedback.event_type == InteractiveMarkerFeedback.POSE_UPDATE:
+            names = robot_api.ArmJoints.names()
+            joints = self._joint_listener.get_joints(names)
             ps = PoseStamped(pose=copy.deepcopy(feedback.pose))
             ps.header.frame_id = feedback.header.frame_id
-            is_valid = self._arm.compute_ik(ps)
+            is_valid = self._arm.compute_ik(ps, joint_name=names, joint_pos=joints)
             if is_valid and not self.valid:
                 for ctl in self.gripper_im.controls:
                     if ctl.name == 'gripper_mesh':
@@ -186,9 +191,13 @@ class GripperTeleop(object):
             if feedback.menu_entry_id == 1:
                 if not self.valid:
                     return
+
+                names = robot_api.ArmJoints.names()
+                joints = self._joint_listener.get_joints(names)
                 ps = PoseStamped(pose=copy.deepcopy(feedback.pose))
                 ps.header.frame_id = feedback.header.frame_id
-                rospy.loginfo(self._arm.move_to_pose(ps))
+                joints = self._arm.compute_ik(ps, joint_name=names, joint_pos=joints, nums=True)
+                rospy.loginfo(self._arm.move_to_joint(names, joints, replan=True))
 
             elif feedback.menu_entry_id == 2:
                 self._gripper.open()
@@ -203,6 +212,7 @@ class AutoPickTeleop(object):
         self._im_server = im_server
         self._menu_handler = MenuHandler()
         self._tf_listener = TransformListener()
+        self._joint_listener = JointStateReader()
         rospy.sleep(0.1)
         
 
@@ -227,9 +237,15 @@ class AutoPickTeleop(object):
         self.obj_im.header = init_pose.header
         self.obj_im.pose = init_pose.pose
 
-        self.obj_im.controls.append(make_gripper(Point(-0.1, 0, 0)))
-        self.obj_im.controls.append(make_gripper(Point(0, 0, 0.25)))
-        self.obj_im.controls.append(make_gripper(Point(0, 0, 0)))
+        self.offsets = []
+        self.offsets.append(Point(-0.1, 0, 0)) # Pregrasp
+        self.offsets.append(Point(0, 0, 0))    # Grasp
+        self.offsets.append(None)              # Grip
+        self.offsets.append(Point(0, 0, 0.25)) # Lift
+
+        for offset in self.offsets:
+            if offset is not None:
+                self.obj_im.controls.append(make_gripper(offset))
         self.obj_im.controls.extend(make_6dof_controls())
         
         box_marker = Marker()
@@ -266,13 +282,18 @@ class AutoPickTeleop(object):
     def handle_feedback(self, feedback):
         if feedback.event_type == InteractiveMarkerFeedback.POSE_UPDATE:
             change = False
+
+            i = 0
+            names = robot_api.ArmJoints.names()
+            joints = self._joint_listener.get_joints(names)
             for ctl in self.obj_im.controls:
                 if ctl.name == 'gripper_mesh':
-                    pos = copy.deepcopy(ctl.markers[0].pose.position)
-                    pos.x -= 0.166
-                    ps = PoseStamped(pose=to_offset(feedback.pose, pos))
+                    if self.offsets[i] is None:
+                        i+= 1
+                    offset = self.offsets[i]
+                    ps = PoseStamped(pose=to_offset(feedback.pose, Point(x=offset.x-0.166, y=offset.y, z=offset.z)))
                     ps.header.frame_id = feedback.header.frame_id
-                    is_valid = self._arm.compute_ik(ps)
+                    is_valid = self._arm.compute_ik(ps, joint_name=names, joint_pos=joints)
                     if is_valid and ctl.markers[0].color.g == 0:
                         change = True
                         for marker in ctl.markers:
@@ -283,6 +304,8 @@ class AutoPickTeleop(object):
                         for marker in ctl.markers:
                             marker.color.g = 0
                             marker.color.r = 1
+                    i += 1
+                
             if change:
                 self.obj_im.pose = feedback.pose
                 self._im_server.insert(self.obj_im, feedback_cb=self.handle_feedback)
@@ -293,19 +316,39 @@ class AutoPickTeleop(object):
                 for ctl in self.obj_im.controls:
                     if ctl.name == 'gripper_mesh' and ctl.markers[0].color.g == 0:
                         return
-                ps = PoseStamped(pose=to_offset(feedback.pose, Point(x=-0.266)))
-                ps.header.frame_id = feedback.header.frame_id
-                rospy.loginfo(self._arm.move_to_pose(ps))
-
-                ps = PoseStamped(pose=to_offset(feedback.pose, Point(x=-0.166)))
-                ps.header.frame_id = feedback.header.frame_id
-                rospy.loginfo(self._arm.move_to_pose(ps))
-
-                self._gripper.close()
-
-                ps = PoseStamped(pose=to_offset(feedback.pose, Point(x=-0.166, z=0.25)))
-                ps.header.frame_id = feedback.header.frame_id
-                rospy.loginfo(self._arm.move_to_pose(ps))
+                
+                names = robot_api.ArmJoints.names()
+                joints = self._joint_listener.get_joints(names)
+                for offset in self.offsets:
+                    if offset is None:
+                        self._gripper.close()
+                    else:
+                        ps = PoseStamped(pose=to_offset(feedback.pose, Point(x=offset.x-0.166, y=offset.y, z=offset.z)))
+                        ps.header.frame_id = feedback.header.frame_id
+                        joints = self._arm.compute_ik(ps, joint_name=names, joint_pos=joints, nums=True)
+                        rospy.loginfo(self._arm.move_to_joint(names, joints, replan=True))
+                
+                # oc = None
+                # for offset in self.offsets:
+                #     if offset is None:
+                #         self._gripper.close()
+                #     else:
+                #         ps = PoseStamped(pose=to_offset(feedback.pose, Point(x=offset.x-0.166, y=offset.y, z=offset.z)))
+                #         ps.header.frame_id = feedback.header.frame_id
+                #         if self._arm.check_pose(ps, orientation_constraint=oc) == 'SUCCESS':
+                #             rospy.loginfo(oc)
+                #             rospy.loginfo(self._arm.move_to_pose(ps, orientation_constraint=oc, replan=True))
+                #         else:
+                #             rospy.loginfo("Failed")
+                #         if oc is None:
+                #             oc = OrientationConstraint()
+                #             oc.header.frame_id = 'base_link'
+                #             oc.link_name = 'wrist_roll_link'
+                #             oc.orientation.w = 1
+                #             oc.absolute_x_axis_tolerance = 0.4
+                #             oc.absolute_y_axis_tolerance = 0.4
+                #             oc.absolute_z_axis_tolerance = 3.14
+                #             oc.weight = 1.0
 
             elif feedback.menu_entry_id == 2:
                 self._gripper.open()

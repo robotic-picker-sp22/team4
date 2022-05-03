@@ -58,7 +58,8 @@ class Arm(object):
                     replan=False,
                     replan_attempts=5,
                     tolerance=0.01,
-                    orientation_constraint=None):
+                    orientation_constraint=None,
+                    joint_constraint=None):
         """Moves the end-effector to a pose, using motion planning.
 
         Args:
@@ -100,20 +101,76 @@ class Arm(object):
         self._move_group_client.send_goal_and_wait(goal, rospy.Duration(execution_timeout))
         result = moveit_error_string(self._move_group_client.get_result().error_code.val)
         return result
+    
+    def move_to_joint(self,
+                    joint_names,
+                    joint_positions,
+                    allowed_planning_time=10.0,
+                    execution_timeout=15.0,
+                    group_name='arm',
+                    num_planning_attempts=1,
+                    plan_only=False,
+                    replan=False,
+                    replan_attempts=5,
+                    tolerance=0.01,
+                    orientation_constraint=None,
+                    joint_constraint=None):
+        """Moves the end-effector to a pose, using motion planning.
+
+        Args:
+            pose: geometry_msgs/PoseStamped. The goal pose for the gripper.
+            allowed_planning_time: float. The maximum duration to wait for a
+                planning result, in seconds.
+            execution_timeout: float. The maximum duration to wait for
+                an arm motion to execute (or for planning to fail completely),
+                in seconds.
+            group_name: string. Either 'arm' or 'arm_with_torso'.
+            num_planning_attempts: int. The number of times to compute the same
+                plan. The shortest path is ultimately used. For random
+                planners, this can help get shorter, less weird paths.
+            plan_only: bool. If True, then this method does not execute the
+                plan on the robot. Useful for determining whether this is
+                likely to succeed.
+            replan: bool. If True, then if an execution fails (while the arm is
+                moving), then come up with a new plan and execute it.
+            replan_attempts: int. How many times to replan if the execution
+                fails.
+            tolerance: float. The goal tolerance, in meters.
+
+        Returns:
+            string describing the error if an error occurred, else None.
+        """
+        goal_builder = MoveItGoalBuilder()
+        goal_builder.set_joint_goal(joint_names, joint_positions)
+        goal_builder.allowed_planning_time = allowed_planning_time
+        goal_builder.num_planning_attempts = num_planning_attempts
+        goal_builder.plan_only = plan_only
+        goal_builder.replan = replan
+        goal_builder.replan_attempts = replan_attempts
+        goal_builder.tolerance = tolerance
+        if orientation_constraint is not None:
+            goal_builder.add_path_orientation_constraint(orientation_constraint)
+        rospy.sleep(0.1)
+        goal = goal_builder.build()
+
+        self._move_group_client.send_goal_and_wait(goal, rospy.Duration(execution_timeout))
+        result = moveit_error_string(self._move_group_client.get_result().error_code.val)
+        return result
 
     def check_pose(self, 
             pose_stamped,
             allowed_planning_time=10.0,
             group_name='arm',
-            tolerance=0.01):
+            tolerance=0.01, orientation_constraint=None):
         return self.move_to_pose(
             pose_stamped,
             allowed_planning_time=allowed_planning_time,
             group_name=group_name,
             tolerance=tolerance,
-            plan_only=True)
+            plan_only=True, 
+            orientation_constraint=orientation_constraint)
 
-    def compute_ik(self, pose_stamped, timeout=rospy.Duration(5), debug=False):
+    def compute_ik(self, pose_stamped, timeout=rospy.Duration(5), debug=False, nums=False, joint_name=None, joint_pos=None):
         """Computes inverse kinematics for the given pose.
 
         Note: if you are interested in returning the IK solutions, we have
@@ -130,6 +187,10 @@ class Arm(object):
         request.ik_request.pose_stamped = pose_stamped
         request.ik_request.group_name = 'arm'
         request.ik_request.timeout = timeout
+        request.ik_request.avoid_collisions = True
+        if joint_name is not None:
+            request.ik_request.robot_state.joint_state.name = joint_name
+            request.ik_request.robot_state.joint_state.position = joint_pos
         response = self._compute_ik(request)
         error_str = moveit_error_string(response.error_code.val)
         success = error_str == 'SUCCESS'
@@ -140,6 +201,12 @@ class Arm(object):
             for name, position in zip(joint_state.name, joint_state.position):
                 if name in ArmJoints.names():
                     rospy.loginfo('{}: {}'.format(name, position))
+        if nums:
+            d = dict(zip(joint_state.name, joint_state.position))
+            if joint_name is not None:
+                return [d[x] for x in joint_name]
+            else:
+                return d
         return True
 
     def cancel_all_goals(self):
