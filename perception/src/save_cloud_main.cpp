@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
                                  ros::Time(0), ros::Duration(5.0));
 
     tf::StampedTransform transform;
-
+    std::cout << cloud->header.frame_id << std::endl;
     try {                                                                                 
         tf_listener.lookupTransform("base_link", cloud->header.frame_id,                    
                                     ros::Time(0), transform);                               

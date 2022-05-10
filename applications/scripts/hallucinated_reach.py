@@ -3,6 +3,7 @@
 import copy
 from geometry_msgs.msg import PoseStamped
 from ar_track_alvar_msgs.msg import AlvarMarkers
+from joint_state_reader import JointStateReader
 import robot_api
 import rospy
 
@@ -25,6 +26,8 @@ class ArTagReader(object):
 def main():
     rospy.init_node('hallucination_search')
     wait_for_time()
+    joint_listener = JointStateReader()
+
 
     start = PoseStamped()
     start.header.frame_id = 'base_link'
@@ -41,20 +44,27 @@ def main():
     while len(reader.markers) == 0:
         rospy.sleep(0.1)
     
+    names = robot_api.ArmJoints.names()
+    joints = joint_listener.get_joints(names)
     for marker in reader.markers:
         # TODO: get the pose to move to
         marker.pose.header = marker.header
+        print(marker.header)
         pose = copy.deepcopy(marker.pose)
-        pose.pose.position.x -= 0.15
+        pose.pose.position.x -= 0.1
         pose.pose.orientation = copy.deepcopy(start.pose.orientation)
-        error = arm.move_to_pose(pose, tolerance=0.03)
-        if error == "SUCCESS":
+        joints = arm.compute_ik(pose, joint_name=names, joint_pos=joints, nums=True)
+        if joints != False:
+            result = arm.move_to_joint(names, joints, replan=True)
+        else:
+            result = None
+            joints = joint_listener.get_joints(names)
+        if result == "SUCCESS":
             rospy.loginfo('Moved to marker {}'.format(marker.id))
             # return
         else:
-            rospy.loginfo(error)
+            rospy.loginfo(result)
             rospy.logwarn('Failed to move to marker {}'.format(marker.id))
-    rospy.logerr('Failed to move to any markers!')
 
 
 if __name__ == '__main__':
