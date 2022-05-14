@@ -19,12 +19,12 @@
 
 void Crop(PointCloudC::Ptr cloud_in, PointCloudC::Ptr cloud_out) {
   double min_x, min_y, min_z, max_x, max_y, max_z;
-  ros::param::param("crop_min_x", min_x, 0.3);
-  ros::param::param("crop_min_y", min_y, -1.0);
-  ros::param::param("crop_min_z", min_z, 0.5);
-  ros::param::param("crop_max_x", max_x, 0.9);
-  ros::param::param("crop_max_y", max_y, 1.0);
-  ros::param::param("crop_max_z", max_z, 1.5);
+  ros::param::param("crop_min_x", min_x, 1.2);
+  ros::param::param("crop_min_y", min_y, -0.5);
+  ros::param::param("crop_min_z", min_z, 0.55);
+  ros::param::param("crop_max_x", max_x, 1.53);
+  ros::param::param("crop_max_y", max_y, 0.56);
+  ros::param::param("crop_max_z", max_z, 0.76);
   Eigen::Vector4f min_pt(min_x, min_y, min_z, 1);
   Eigen::Vector4f max_pt(max_x, max_y, max_z, 1);
   pcl::CropBox<PointC> crop;
@@ -84,7 +84,7 @@ int main(int argc, char** argv) {
   const perception::Object& object = objects[0];
   perception_msgs::ObjectFeatures features;
   features.object_name = label;
-  perception::ExtractSizeFeatures(object, &features);
+  perception::ExtractFeatures(object, &features);
 
   rosbag::Bag bag_out;
   bag_out.open(label + "_label.bag", rosbag::bagmode::Write);

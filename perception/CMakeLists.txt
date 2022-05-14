@@ -113,6 +113,7 @@ catkin_package(
     perception_downsample
     perception_segmentation
     perception_feature_extraction
+    perception_object_recognizer
 # DEPENDS system_lib
 )
 
@@ -140,6 +141,7 @@ add_library(perception_crop src/crop.cpp)
 add_library(perception_downsample src/downsample.cpp)
 add_library(perception_segmentation src/segmentation.cpp)
 add_library(perception_feature_extraction src/feature_extraction.cpp)
+add_library(perception_object_recognizer src/object_recognizer.cpp)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -148,6 +150,7 @@ add_dependencies(perception_crop ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EX
 add_dependencies(perception_downsample ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(perception_segmentation ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(perception_feature_extraction ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(perception_object_recognizer ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 
 ## Declare a C++ executable
@@ -174,6 +177,7 @@ target_link_libraries(perception_point_cloud_demo
   perception_crop
   perception_downsample
   perception_segmentation
+  perception_object_recognizer
   ${catkin_LIBRARIES}
 )
 
@@ -187,8 +191,13 @@ target_link_libraries(perception_extract_features_main
 
 target_link_libraries(perception_crop ${catkin_LIBRARIES})
 target_link_libraries(perception_downsample ${catkin_LIBRARIES})
-target_link_libraries(perception_segmentation ${catkin_LIBRARIES})
 target_link_libraries(perception_feature_extraction ${catkin_LIBRARIES})
+target_link_libraries(perception_object_recognizer ${catkin_LIBRARIES})
+target_link_libraries(perception_segmentation
+  perception_feature_extraction
+  perception_object_recognizer
+  ${catkin_LIBRARIES}
+)
 
 #############
 ## Install ##

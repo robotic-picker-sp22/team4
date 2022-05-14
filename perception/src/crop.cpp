@@ -17,6 +17,7 @@ Cropper::Cropper(const ros::Publisher& pub) : pub_(pub) {
     tf::TransformListener tf_listener;
     tf_listener.waitForTransform("base_link", "head_camera_rgb_optical_frame",                     
                                  ros::Time(0), ros::Duration(5.0));
+    // TODO: Move next line to other method and check if it's fast enough
     tf_listener.lookupTransform("base_link", "head_camera_rgb_optical_frame",                    
                                     ros::Time(0), this->transform);
   }

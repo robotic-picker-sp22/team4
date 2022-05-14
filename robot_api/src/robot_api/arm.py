@@ -195,6 +195,7 @@ class Arm(object):
         error_str = moveit_error_string(response.error_code.val)
         success = error_str == 'SUCCESS'
         if not success:
+            print(error_str)
             return False
         joint_state = response.solution.joint_state
         if debug:
