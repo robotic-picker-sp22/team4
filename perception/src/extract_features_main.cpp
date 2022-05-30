@@ -19,12 +19,12 @@
 
 void Crop(PointCloudC::Ptr cloud_in, PointCloudC::Ptr cloud_out) {
   double min_x, min_y, min_z, max_x, max_y, max_z;
-  ros::param::param("crop_min_x", min_x, 1.2);
-  ros::param::param("crop_min_y", min_y, -0.5);
-  ros::param::param("crop_min_z", min_z, 0.55);
-  ros::param::param("crop_max_x", max_x, 1.53);
-  ros::param::param("crop_max_y", max_y, 0.56);
-  ros::param::param("crop_max_z", max_z, 0.76);
+  ros::param::param("crop_min_x", min_x, 0.9);
+  ros::param::param("crop_min_y", min_y, 0.15);
+  ros::param::param("crop_min_z", min_z, 1.154);
+  ros::param::param("crop_max_x", max_x, 1.22);
+  ros::param::param("crop_max_y", max_y, 0.45);
+  ros::param::param("crop_max_z", max_z, 1.329);
   Eigen::Vector4f min_pt(min_x, min_y, min_z, 1);
   Eigen::Vector4f max_pt(max_x, max_y, max_z, 1);
   pcl::CropBox<PointC> crop;
@@ -37,7 +37,7 @@ void Crop(PointCloudC::Ptr cloud_in, PointCloudC::Ptr cloud_out) {
 int main(int argc, char** argv) {
   ros::init(argc, argv, "extract_features");
   ros::Time::init();
-  if (argc < 3) {
+  if (argc < 4) {
     std::cout << "Extracts features from a bag file with a point cloud with a "
                  "single object on a table. The features are saved to LABEL.bag"
               << std::endl;
@@ -47,6 +47,7 @@ int main(int argc, char** argv) {
   }
   std::string path(argv[1]);
   std::string label(argv[2]);
+  std::string algo(argv[3]);
 
   rosbag::Bag bag;
   bag.open(path, rosbag::bagmode::Read);
@@ -74,7 +75,7 @@ int main(int argc, char** argv) {
   Crop(pcl_cloud, cropped_cloud);
 
   std::vector<perception::Object> objects;
-  perception::SegmentObjects(cropped_cloud, &objects);
+  perception::SegmentObjects(cropped_cloud, &objects, algo);
   if (objects.size() != 1) {
     std::cerr << "Expected to see exactly one object, found " << objects.size()
               << std::endl;

@@ -12,76 +12,18 @@
 #include <pcl/common/common.h>
 #include <pcl/segmentation/region_growing.h>
 #include <pcl/segmentation/region_growing_rgb.h>
+#include <pcl/search/search.h>
+#include <pcl/search/kdtree.h>
+#include <pcl/features/normal_3d.h>
 #include <algorithm>
+#include "geometry_msgs/PoseStamped.h"
 
 typedef pcl::PointXYZRGB PointC;
 typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloudC;
 
 namespace perception {
-void SegmentBinObjects(PointCloudC::Ptr cloud, std::vector<pcl::PointIndices>* indices, std::string method) {
-    if (method == "euclid") {
-        double cluster_tolerance;
-        int min_cluster_size, max_cluster_size;
-        ros::param::param("ec_cluster_tolerance", cluster_tolerance, 0.01);
-        ros::param::param("ec_min_cluster_size", min_cluster_size, 10);
-        ros::param::param("ec_max_cluster_size", max_cluster_size, 10000);
-        pcl::EuclideanClusterExtraction<PointC> euclid;
-        euclid.setInputCloud(cloud);
-        // euclid.setIndices(inside_bin_indices); // << TODO: is cloud already cropped or do we get indices for the crop?
-        euclid.setClusterTolerance(cluster_tolerance);
-        euclid.setMinClusterSize(min_cluster_size);
-        euclid.setMaxClusterSize(max_cluster_size);
-        euclid.extract(*indices);
-    } else if (method == "region") {
-        double curvature_threshold;
-        int min_cluster_size, max_cluster_size;
-        ros::param::param("reg_min_cluster_size", min_cluster_size, 50);
-        ros::param::param("reg_max_cluster_size", max_cluster_size, 1000000);
-        ros::param::param("reg_curvature_threshold", curvature_threshold, 1.0);
-        pcl::PointCloud <pcl::Normal>::Ptr normals (new pcl::PointCloud <pcl::Normal>);
-        pcl::RegionGrowing<PointC, pcl::Normal> reg;
-        reg.setInputCloud (cloud);
-        reg.setMinClusterSize (min_cluster_size);
-        reg.setMaxClusterSize (max_cluster_size);
-        reg.setSmoothnessThreshold (3.0 / 180.0 * M_PI);
-        reg.setCurvatureThreshold (curvature_threshold);
-        reg.setInputNormals (normals); // do we need this?
-        reg.extract(*indices);
-    } else if (method == "color") {
-        int min_cluster_size, distance_threshold, point_threshold, reg_threshold;
-        ros::param::param("clr_min_cluster_size", min_cluster_size, 600);
-        ros::param::param("clr_distance_threshold", distance_threshold, 10);
-        ros::param::param("clr_point_threshold", point_threshold, 6);
-        ros::param::param("clr_reg_threshold", reg_threshold, 5);
-        pcl::RegionGrowingRGB<PointC> reg;
-        reg.setInputCloud (cloud);
-        reg.setDistanceThreshold (distance_threshold);
-        reg.setPointColorThreshold (point_threshold);
-        reg.setRegionColorThreshold (reg_threshold);
-        reg.setMinClusterSize (min_cluster_size);
-        reg.extract (*indices);
-    } else {
-        ROS_INFO("Incorrect instance of SegmentBinObjects called.");
-        return;
-    }
-
-    // Find the size of the smallest and the largest object,
-    // where size = number of points in the cluster
-    size_t min_size = std::numeric_limits<size_t>::max();
-    size_t max_size = std::numeric_limits<size_t>::min();
-    for (size_t i = 0; i < indices->size(); ++i) {
-        // TODO: implement this
-        size_t cluster_size = indices->at(i).indices.size();
-        min_size = std::min(cluster_size, min_size);
-        max_size = std::max(cluster_size, max_size);
-    }
-
-    ROS_INFO("Found %ld objects, min size: %ld, max size: %ld",
-            indices->size(), min_size, max_size);
-}
-
-Segmenter::Segmenter(const ros::Publisher& points_pub, const ros::Publisher& marker_pub, const ObjectRecognizer& recognizer)
-    : points_pub_(points_pub), marker_pub_(marker_pub), recognizer_(recognizer) {}
+Segmenter::Segmenter(const ros::Publisher& points_pub, const ros::Publisher& marker_pub, const ObjectRecognizer& recognizer, std::string algo)
+    : points_pub_(points_pub), marker_pub_(marker_pub), recognizer_(recognizer), algo_(algo) {}
 
 void GetAxisAlignedBoundingBox(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud,
                             geometry_msgs::Pose* pose,
@@ -95,6 +37,10 @@ void GetAxisAlignedBoundingBox(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud,
     dimensions->x = std::abs(min_pcl.x - max_pcl.x);
     dimensions->y = std::abs(min_pcl.y - max_pcl.y);
     dimensions->z = std::abs(min_pcl.z - max_pcl.z);
+    pose->orientation.x = 0;
+    pose->orientation.y = 0;
+    pose->orientation.z = 0;
+    pose->orientation.w = 1;
 }
 
 void Segmenter::Callback(const sensor_msgs::PointCloud2& msg) {
@@ -105,8 +51,8 @@ void Segmenter::Callback(const sensor_msgs::PointCloud2& msg) {
     pcl::removeNaNFromPointCloud(*cloud_unfiltered, *cloud, index);
 
     std::vector<Object> objects;
-    SegmentObjects(cloud, &objects);
-
+    SegmentObjects(cloud, &objects, this->algo_);
+    ROS_INFO("" + objects.size());
     for (size_t i = 0; i < objects.size(); ++i) {
         const Object& object = objects[i];
 
@@ -126,10 +72,17 @@ void Segmenter::Callback(const sensor_msgs::PointCloud2& msg) {
         // std::string name;
         // double confidence;
         // TODO: recognize the object with the recognizer_.
+        // Note by Tanish: Comment all the code below if you just want to see segmentation by algos
         std::string name;
         double confidence;
         recognizer_.Recognize(object, &name, &confidence);
         confidence = round(1000 * confidence) / 1000;
+
+        geometry_msgs::PoseStamped ps;
+        ps.pose = object.pose;
+        ps.header.frame_id = name;
+        ps.header.stamp.sec = (int) (confidence * 1000);
+        points_pub_.publish(ps);
 
         std::stringstream ss;
         ss << name << " (" << confidence << ")";
@@ -155,12 +108,11 @@ void Segmenter::Callback(const sensor_msgs::PointCloud2& msg) {
     }
 }
 void SegmentObjects(PointCloudC::Ptr cloud,
-                        std::vector<Object>* objects) {
+                        std::vector<Object>* objects,
+                        std::string method) {
 // Same as callback, but with visualization code removed.
     std::vector<pcl::PointIndices> object_indices;
-    SegmentBinObjects(cloud, &object_indices, "euclid");
-    // SegmentBinObjects(cloud, &object_indices, "region");
-    // SegmentBinObjects(cloud, &object_indices, "color");
+    SegmentBinObjects(cloud, &object_indices, method);
 
     for (size_t i = 0; i < object_indices.size(); ++i) {
         // Reify indices into a point cloud of the object.
@@ -178,5 +130,79 @@ void SegmentObjects(PointCloudC::Ptr cloud,
                                     &newObject.dimensions);
         objects->push_back(newObject);
     }
+}
+
+void SegmentBinObjects(PointCloudC::Ptr cloud, std::vector<pcl::PointIndices>* indices, std::string method) {
+    if (method == "euclid") {
+        double cluster_tolerance;
+        int min_cluster_size, max_cluster_size;
+        ros::param::param("ec_cluster_tolerance", cluster_tolerance, 0.01);
+        ros::param::param("ec_min_cluster_size", min_cluster_size, 10);
+        ros::param::param("ec_max_cluster_size", max_cluster_size, 10000);
+        pcl::EuclideanClusterExtraction<PointC> euclid;
+        euclid.setInputCloud(cloud);
+        // euclid.setIndices(inside_bin_indices); // << TODO: is cloud already cropped or do we get indices for the crop?
+        euclid.setClusterTolerance(cluster_tolerance);
+        euclid.setMinClusterSize(min_cluster_size);
+        euclid.setMaxClusterSize(max_cluster_size);
+        euclid.extract(*indices);
+    } else if (method == "region") {
+        double curvature_threshold;
+        int min_cluster_size, max_cluster_size, num_neighbours;
+        ros::param::param("reg_min_cluster_size", min_cluster_size, 50);
+        ros::param::param("reg_max_cluster_size", max_cluster_size, 1000000);
+        ros::param::param("reg_num_neighbours", num_neighbours, 30);
+        ros::param::param("reg_curvature_threshold", curvature_threshold, 1.0);
+        pcl::PointCloud <pcl::Normal>::Ptr normals (new pcl::PointCloud <pcl::Normal>);
+        pcl::search::Search <pcl::PointXYZRGB>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZRGB>);
+        pcl::NormalEstimation<pcl::PointXYZRGB, pcl::Normal> normal_estimator;
+        normal_estimator.setSearchMethod(tree);
+        normal_estimator.setInputCloud(cloud);
+        normal_estimator.setKSearch (50);
+        normal_estimator.compute(*normals);
+
+        pcl::RegionGrowing<PointC, pcl::Normal> reg;
+        reg.setInputCloud(cloud);
+        reg.setMinClusterSize(min_cluster_size);
+        reg.setMaxClusterSize(max_cluster_size);
+        reg.setSearchMethod(tree);
+        reg.setNumberOfNeighbours(num_neighbours);
+        reg.setSmoothnessThreshold(3.0 / 180.0 * M_PI);
+        reg.setCurvatureThreshold(curvature_threshold);
+        reg.setInputNormals(normals); // do we need this?
+        reg.extract(*indices);
+    } else if(method == "color") {
+        int min_cluster_size, distance_threshold, point_threshold, reg_threshold;
+        ros::param::param("clr_min_cluster_size", min_cluster_size, 1200);
+        ros::param::param("clr_distance_threshold", distance_threshold, 10);
+        ros::param::param("clr_point_threshold", point_threshold, 6);
+        ros::param::param("clr_reg_threshold", reg_threshold, 5);
+        pcl::search::Search <pcl::PointXYZRGB>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZRGB>);
+        pcl::RegionGrowingRGB<PointC> reg;
+        reg.setInputCloud(cloud);
+        reg.setSearchMethod(tree);
+        reg.setDistanceThreshold(distance_threshold);
+        reg.setPointColorThreshold(point_threshold);
+        reg.setRegionColorThreshold(reg_threshold);
+        reg.setMinClusterSize(min_cluster_size);
+        reg.extract(*indices);
+    } else {
+        ROS_INFO("Incorrect instance of SegmentBinObjects called.");
+        return;
+    }
+
+    // Find the size of the smallest and the largest object,
+    // where size = number of points in the cluster
+    size_t min_size = std::numeric_limits<size_t>::max();
+    size_t max_size = std::numeric_limits<size_t>::min();
+    for (size_t i = 0; i < indices->size(); ++i) {
+        // TODO: implement this
+        size_t cluster_size = indices->at(i).indices.size();
+        min_size = std::min(cluster_size, min_size);
+        max_size = std::max(cluster_size, max_size);
+    }
+
+    ROS_INFO("Found %ld objects, min size: %ld, max size: %ld",
+            indices->size(), min_size, max_size);
 }
 }  // namespace perception

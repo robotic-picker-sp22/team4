@@ -11,13 +11,15 @@ namespace perception {
 
 // Add function definitions here later
 void SegmentObjects(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud,
-                        std::vector<Object>* objects);
+                        std::vector<Object>* objects,
+                        std::string method);
 void SegmentBinObjects(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud,
-                        std::vector<pcl::PointIndices>* indices);
+                        std::vector<pcl::PointIndices>* indices,
+                        std::string method);
 
 class Segmenter {
  public:
-    Segmenter(const ros::Publisher& points_pub, const ros::Publisher& marker_pub, const ObjectRecognizer& recognizer);
+    Segmenter(const ros::Publisher& points_pub, const ros::Publisher& marker_pub, const ObjectRecognizer& recognizer, std::string algo);
     void Callback(const sensor_msgs::PointCloud2& msg);
     // Does a complete bin segmentation pipeline.
     //
@@ -29,5 +31,6 @@ class Segmenter {
   ros::Publisher points_pub_;
   ros::Publisher marker_pub_;
   ObjectRecognizer recognizer_;
+  std::string algo_;
 };
 }  // namespace perception

@@ -54,13 +54,13 @@ ObjectRecognizer::ObjectRecognizer(const std::vector<ObjectFeatures>& dataset)
 void ObjectRecognizer::Recognize(const Object& object, std::string* name,
                                  double* confidence) {
   // TODO: extract features from the object
-  std::vector<double> v2{std::min(object.dimensions.x, object.dimensions.y), std::max(object.dimensions.x, object.dimensions.y), object.dimensions.z};
+  perception_msgs::ObjectFeatures features;
+  perception::ExtractFeatures(object, &features);
   double min_distance = std::numeric_limits<double>::max();
   double second_min_distance = std::numeric_limits<double>::max();
   for (size_t i = 0; i < dataset_.size(); ++i) {
     // TODO: compare the features of the input object to the features of the current dataset object.
-    std::vector<double> v1{dataset_[i].values[0], dataset_[i].values[1], dataset_[i].values[2]};
-    double distance = EuclideanDistance(v1, v2);
+    double distance = EuclideanDistance(features.values, dataset_[i].values);
     if (distance < min_distance) {
       second_min_distance = min_distance;
       min_distance = distance;
@@ -69,8 +69,12 @@ void ObjectRecognizer::Recognize(const Object& object, std::string* name,
       second_min_distance = distance;
     }
   }
-
+  
   // Confidence is based on the distance to the two nearest results.
   *confidence = 1 - min_distance / (min_distance + second_min_distance);
+
+  if (min_distance + second_min_distance == 0) {
+    *confidence = 1;
+  }
 }
 }  // namespace perception

@@ -3,7 +3,7 @@
 import rospy
 from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Quaternion, Pose, Point, Vector3
-from std_msgs.msg import Header, ColorRGBA
+
 
 def wait_for_time():                                              
     """Wait for simulated time to begin.                          

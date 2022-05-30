@@ -18,7 +18,6 @@ class Arm(object):
         arm = robot_api.Arm()
         arm.move_to_joints(joints)
     """
-
     def __init__(self):
         self.client = actionlib.SimpleActionClient('arm_controller/follow_joint_trajectory', control_msgs.msg.FollowJointTrajectoryAction)
         self._move_group_client = actionlib.SimpleActionClient('move_group', MoveGroupAction)
@@ -196,7 +195,7 @@ class Arm(object):
         success = error_str == 'SUCCESS'
         if not success:
             print(error_str)
-            return False
+            return None if nums else False
         joint_state = response.solution.joint_state
         if debug:
             for name, position in zip(joint_state.name, joint_state.position):

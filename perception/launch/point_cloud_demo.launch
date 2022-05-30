@@ -1,14 +1,19 @@
 <launch>
   <arg name="data_dir" />
-  <param name="ec_cluster_tolerance" value="0.03" />
+  <arg name="algo"  />
+  <arg name="cloud_in"  />
+  <!-- <param name="ec_cluster_tolerance" value="0.03" />
   <param name="ec_min_cluster_size" value="700" />
   <param name="ec_max_cluster_size" value="7500" />
-  <param name="distance_above_plane" value="0.01" />
-  <param name="crop_min_x" value="-0.5" />
-  <param name="crop_max_z" value="1.5" />
-  <param name="crop_max_x" value="1.05" />
-  <param name="crop_min_z" value="0.7" />
-  <node pkg="perception" type="point_cloud_demo" name="point_cloud_demo" args="$(arg data_dir)" output="screen">
+  <param name="distance_above_plane" value="0.01" /> -->
+  <!-- <param name="crop_min_x" value="0.9" />
+  <param name="crop_max_z" value="1.6" />
+  <param name="crop_max_x" value="1.4" />
+  <param name="crop_min_z" value="0.77" />
+  <param name="crop_max_y" value="0.5" />
+  <param name="crop_min_y" value="-0.47" /> -->
+  <!-- for actual shiz, torso at 0.26 -->
+  <node pkg="perception" type="point_cloud_demo" name="point_cloud_demo" args="$(arg data_dir) $(arg algo) $(arg cloud_in)" output="screen">
     <remap from="cloud_in" to="mock_point_cloud" />
-  </node>
+  </node>0
 </launch>

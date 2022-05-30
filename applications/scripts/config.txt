@@ -1,0 +1,2 @@
+0 0 sink_center
+0 2 pill_bottle
